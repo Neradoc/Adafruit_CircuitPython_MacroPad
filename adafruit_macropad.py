@@ -291,6 +291,7 @@ class MacroPad:
         if not isinstance(board.DISPLAY, type(None)):
             self.display = board.DISPLAY
             self.display.rotation = rotation
+        self._display_asleep = False
 
         # Define audio:
         self._speaker_enable = digitalio.DigitalInOut(board.SPEAKER_ENABLE)
@@ -1035,3 +1036,28 @@ class MacroPad:
         else:
             raise ValueError("Filetype must be wav or MP3.")
         self._speaker_enable.value = False
+
+    @property
+    def display_sleep_mode(self) -> bool:
+        """
+        Display sleep mode.
+        Set it to put the display into sleep mode or wake it.
+        The display uses < 5uA in sleep mode.
+
+        Sleep mode does the following:
+
+            1) Stops the oscillator and DC-DC circuits
+            2) Stops the OLED drive
+            3) Remembers display data and operation mode active prior to sleeping
+            4) The MP can access (update) the built-in display RAM
+        """
+        return self._display_asleep
+
+    @display_sleep_mode.setter
+    def display_sleep_mode(self, is_sleep: bool) -> None:
+        if self.display and (self._display_asleep != bool(is_sleep)):
+            if is_sleep:
+                self.display.bus.send(0xAE, b"")  # 0xAE = display off, sleep mode
+            else:
+                self.display.bus.send(0xAF, b"")  # 0xAF = display on
+            self._display_asleep = is_sleep
